@@ -1,0 +1,33 @@
+{
+  "name": "insomnia-plugin-browser-request",
+  "version": "0.0.1",
+  "insomnia": {
+    "name": "browser-request",
+    "displayName": "Browser Request",
+    "description": "Run requests in the browser",
+    "unlisted": false,
+    "publisher": {
+      "name": "Baptiste Lanusse"
+    }
+  },
+  "main": "index.js",
+  "keywords": [
+    "insomnia",
+    "plugin",
+    "browser"
+  ],
+  "author": "Baptiste Lanusse <lanussebaptiste40@gmail.com>",
+  "contributors": [],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LanusseBaptiste40/insomnia-plugin-browser-request.git",
+    "directory": ""
+  },
+  "bugs": {
+    "url": "https://github.com/LanusseBaptiste40/insomnia-plugin-browser-request/issues"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}
