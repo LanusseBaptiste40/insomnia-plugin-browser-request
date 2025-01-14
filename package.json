@@ -1,6 +1,8 @@
 {
   "name": "insomnia-plugin-browser-request",
-  "version": "0.0.1",
+  "description": "The plugin allows you to launch requests in your browser instead of in the one embedded in Insomnia",
+  "version": "0.1.0",
+  "main": "dist/index.js",
   "insomnia": {
     "name": "browser-request",
     "displayName": "Browser Request",
@@ -10,7 +12,6 @@
       "name": "Baptiste Lanusse"
     }
   },
-  "main": "index.js",
   "keywords": [
     "insomnia",
     "plugin",
@@ -27,7 +28,22 @@
   "bugs": {
     "url": "https://github.com/LanusseBaptiste40/insomnia-plugin-browser-request/issues"
   },
+  "scripts": {
+    "build": "babel src --out-dir dist"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-dom": "*"
+  },
   "dependencies": {
     "puppeteer": "^24.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.26.4",
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-transform-runtime": "^7.25.9",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "@babel/runtime": "^7.26.0"
   }
 }
