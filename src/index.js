@@ -251,65 +251,78 @@ module.exports.requestGroupActions = [
   },
 ];
 
-// module.exports.requestTabs = [
-//   {
-//     name: "Browser Request",
-//     render: (context, request) => {
-//       const [settings, setSettings] = React.useState(null);
+module.exports.requestActions = [
+  {
+    label: "Set Browser Request Plugin Settings for Request",
+    action: async (context, data) => {
+      const { request } = data;
 
-//       React.useEffect(() => {
-//         async function loadSettings() {
-//           const storedSettings = await context.store.getItem(
-//             `${PLUGIN_SETTINGS_KEY}-${request._id}`
-//           );
-//           setSettings(storedSettings || { enabled: false, redirectUrl: "" });
-//         }
-//         loadSettings();
-//       }, [request._id]);
+      const requestId = request._id;
 
-//       const handleToggle = async () => {
-//         const newSettings = { ...settings, enabled: !settings.enabled };
-//         setSettings(newSettings);
-//         await context.store.setItem(
-//           `${PLUGIN_SETTINGS_KEY}-${request._id}`,
-//           newSettings
-//         );
-//       };
+      const lastSettingsValue = await context.store.getItem(
+        `${PLUGIN_SETTINGS_KEY}-${requestId}`
+      );
 
-//       const handleUrlChange = async (e) => {
-//         const newSettings = { ...settings, redirectUrl: e.target.value };
-//         setSettings(newSettings);
-//         await context.store.setItem(
-//           `${PLUGIN_SETTINGS_KEY}-${request._id}`,
-//           newSettings
-//         );
-//       };
+      let lastSettings = {
+        enabled: "false",
+        redirectUrl: "",
+      };
 
-//       if (!settings) return <div>Loading...</div>;
+      if (lastSettingsValue) {
+        console.log(logPlugin, `last settings found : ${lastSettingsValue}`);
+        try {
+          let parsedLastSettings = JSON.parse(lastSettingsValue);
+          if (parsedLastSettings) {
+            lastSettings = parsedLastSettings;
+          }
+        } catch (error) {
+          console.log(
+            logPlugin,
+            `Could not parse content of last settings: ${error.message}`
+          );
+        }
+      }
 
-//       return (
-//         <div>
-//           <label>
-//             <input
-//               type="checkbox"
-//               checked={settings.enabled}
-//               onChange={handleToggle}
-//             />
-//             Enable Browser Request
-//           </label>
-//           <br />
-//           <label>
-//             Redirect URL:
-//             <input
-//               type="text"
-//               value={settings.redirectUrl}
-//               onChange={handleUrlChange}
-//               disabled={!settings.enabled}
-//               placeholder="http://localhost:8000/callback"
-//             />
-//           </label>
-//         </div>
-//       );
-//     },
-//   },
-// ];
+      const redirectUrl = await context.app.prompt(
+        "Enter Redirect URL for this request (empty to disable plugin).",
+        {
+          label: "Redirect URL",
+          submitName: "Save",
+          placeholder: "http://localhost:8000/callback",
+          defaultValue: lastSettings.redirectUrl,
+        }
+      );
+
+      let newSettings = {
+        enabled: "true",
+        redirectUrl: redirectUrl,
+      };
+
+      if (!redirectUrl) {
+        console.log(
+          logPlugin,
+          "Redirect URL not provided, disabling Browser Request Plugin for the request."
+        );
+        newSettings = {
+          enabled: "false",
+          redirectUrl: "",
+        };
+
+        await context.store.removeItem(`${PLUGIN_SETTINGS_KEY}-${requestId}`);
+        return;
+      }
+
+      console.log(logPlugin, `New settings : ${JSON.stringify(newSettings)}`);
+      console.log(
+        logPlugin,
+        `Applying config for key: ${PLUGIN_SETTINGS_KEY}-${requestId}`
+      );
+      await context.store.setItem(
+        `${PLUGIN_SETTINGS_KEY}-${requestId}`,
+        JSON.stringify(newSettings)
+      );
+
+      console.log(logPlugin, `Browser Request Plugin enabled for the request.`);
+    },
+  },
+];
