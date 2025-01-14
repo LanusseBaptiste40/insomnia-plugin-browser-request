@@ -51,31 +51,109 @@ module.exports.requestHooks = [
       `Plugin is enabled, redirect URL set to: ${redirectUrl}`
     );
 
+    const requestUrl = request.getUrl();
+
+    console.log(
+      logPlugin,
+      `Launching Puppeteer browser to url: "${requestUrl}"...`
+    );
+
+    // Use Puppeteer to handle the browser request
+    const browser = await puppeteer.launch({
+      headless: false,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
+
+    await page.setViewport({ width: 1920, height: 1080 });
+    await page.goto(requestUrl);
+    const finalResponse = await page.waitForRequest((request) => {
+      return request.url().includes(redirectUrl);
+    });
+    await browser.close();
+
+    console.log(logPlugin, `Redirect URL reached: ${finalResponse.url()}`);
+    await context.store.setItem(
+      "browser-plugin-response",
+      JSON.stringify({
+        finalUrl: finalResponse.url(),
+      })
+    );
+  },
+];
+
+const jsonObjToBuffer = (obj) => Buffer.from(JSON.stringify(obj), "utf-8");
+
+module.exports.responseHooks = [
+  async (context) => {
+    const { request } = context;
+
+    const requestId = request.getId();
+
+    console.log(
+      logPlugin,
+      `Searching config for key: ${PLUGIN_SETTINGS_KEY}-${requestId}`
+    );
+
+    const settingsValue = await context.store.getItem(
+      `${PLUGIN_SETTINGS_KEY}-${requestId}`
+    );
+
+    console.log(logPlugin, `Config found for plugin : ${settingsValue}`);
+
+    if (!settingsValue) {
+      console.log(
+        logPlugin,
+        "Plugin has not been configured for this request, skipping."
+      );
+      return;
+    }
+
+    const settings = JSON.parse(settingsValue);
+    if (!settings || !settings.enabled) {
+      console.log(
+        logPlugin,
+        "Plugin is not enabled for this request, skipping."
+      );
+      return;
+    }
+
     try {
-      console.log(logPlugin, "Launching Puppeteer browser...");
+      console.log(logPlugin, "Response Hook fired, updating response");
 
-      // Use Puppeteer to handle the browser request
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      const originalStatus = context.response.getStatusCode();
+      const originalHeaders = context.response.getHeaders();
+      const originalBody = await context.response.getBody();
+
+      console.log(logPlugin, "Original Response:", {
+        status: originalStatus,
+        headers: originalHeaders,
+        body: originalBody,
       });
-      const page = await browser.newPage();
-      await page.goto(request.url);
-      // await page.waitForFunction(
-      //   (url) => window.location.href.contains(url),
-      //   {},
-      //   redirectUrl
-      // );
-      // const finalUrl = await page.url();
-      await browser.close();
 
-      // console.log(logPlugin, `Redirect URL reached: ${finalUrl}`);
-      // context.response.setBody(`Redirect URL reached: ${finalUrl}`);
+      const responseValue = await context.store.getItem(
+        "browser-plugin-response"
+      );
+
+      console.log(logPlugin, `Final value found : "${responseValue}", building response...`);
+
+      const params = {};
+
+      const queryString = JSON.parse(responseValue).finalUrl.split('?')[1];
+      if (queryString) {
+        const pairs = queryString.split('&');
+
+        pairs.forEach(pair => {
+          const [key, value] = pair.split('=');
+          params[decodeURIComponent(key)] = decodeURIComponent(value);
+        });
+      }
+
+      context.response.setBody(jsonObjToBuffer(params));
     } catch (error) {
-      await browser.close();
-      console.error(logPlugin, `Error occured during browser request: ${error.message}`);
-      throw new Error(
-        `Error occurred during browser request: ${error.message}`
+      console.error(
+        logPlugin,
+        `Something went wrong with response hook : ${error.message}`
       );
     }
   },
